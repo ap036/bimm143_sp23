@@ -1,0 +1,202 @@
+---
+title: "Class 18: Mutational Signatures"
+author: "Aparajita Pranjal"
+date: "2023-06-02"
+format: pdf
+editor: visual
+---
+
+## 1. Exploring a cancer sequencing data portal
+
+I chose to work on **lung squamous cell carcinomas.**
+
+-   **Q.** How many cancer samples are included in the dataset? **487 samples**
+
+-   **Q.** Which is the most mutated gene? **TP53**
+
+-   **Q.** Which is the most common treatment undergone by patients? **Cisplatin**
+
+# 2. Downloading cancer sequencing data
+
+Downloaded lusc data from cBioPortal and added to class18 folder.
+
+# 3. Generating mutational matrices and visualizing mutational profiles
+
+```{r}
+#BiocManager::install("maftools")
+#BiocManager::install("BSgenome.Hsapiens.UCSC.hg19")
+#BiocManager::install("MutationalPatterns")
+```
+
+```{r}
+# Read maf file
+library(maftools)
+coad = read.maf('data_mutations.txt')
+
+# Generate mutational matrix (SBS96 context)
+mm_coad = trinucleotideMatrix(maf = coad, prefix = 'chr', add = TRUE,
+                              ref_genome = "BSgenome.Hsapiens.UCSC.hg19")
+mm_coad = t(mm_coad$nmf_matrix)
+```
+
+Generating mutational profiles from lusc data:
+
+```{r}
+# Generate mutational profiles (4 random samples)
+library(MutationalPatterns)
+set.seed(11111) # fixing the seed for random number generation
+
+samples_to_plot = sample(1:ncol(mm_coad),4) # selecting 4 random samples
+plot_96_profile(mm_coad[,samples_to_plot], condensed = T)
+```
+
+```{r}
+# Generate mutational profiles (top 4 mutated samples and top 4 less mutated)
+mutations_in_samples = colSums(mm_coad)
+mutations_in_samples = sort(mutations_in_samples, decreasing = T)
+samples_to_plot = names(mutations_in_samples)[1:4]
+plot_96_profile(mm_coad[,samples_to_plot], condensed = T)
+```
+
+Sorting profiles:
+
+```{r}
+mutations_in_samples = sort(mutations_in_samples, decreasing = F)
+samples_to_plot = names(mutations_in_samples)[1:4]
+plot_96_profile(mm_coad[,samples_to_plot], condensed = T)
+```
+
+Averaging profiles:
+
+```{r}
+# Generate average mutational profiles
+relative_mutational_profile = apply(mm_coad, 2, prop.table) # obtained relative
+                                                            # mutational matrix
+average_mutational_profile = rowMeans(relative_mutational_profile)
+average_mutational_profile = data.frame(average_mutational_profile)
+plot_96_profile(average_mutational_profile, condensed = T)
+```
+
+# 4. COSMIC reference mutational signatures
+
+# 5. Assigning reference mutational signatures
+
+```{r}
+# Mutational signature assignment
+cosmic_signatures = get_known_signatures(source = 'COSMIC_v3.2')
+fit_res = fit_to_signatures(mm_coad, cosmic_signatures)
+
+# Top contributing signatures
+contributions = fit_res$contribution
+
+top_contributing_signatures_abs = rowMeans(contributions)
+top_contributing_signatures_abs = sort(top_contributing_signatures_abs,
+                                       decreasing = T)[1:4]
+
+## Top 4 contributing signatures (absolute values)
+top_contributing_signatures_abs
+```
+
+```{r}
+relative_contributions = apply(contributions,2,prop.table)
+top_contributing_signatures_rel = rowMeans(relative_contributions)
+top_contributing_signatures_rel = sort(top_contributing_signatures_rel,
+                                       decreasing = T)[1:4]
+
+## Top 4 contributing signatures (relative values)
+top_contributing_signatures_rel
+```
+
+```{r}
+# Mutational signature assignment strict
+fit_res_strict = fit_to_signatures_strict(mm_coad, cosmic_signatures)
+fit_res_strict = fit_res_strict$fit_res
+contributions_strict = fit_res_strict$contribution
+```
+
+# 6. Visualizing mutational signature assignment results
+
+```{r}
+# Visualization of signature assignment results (fit_to_signatures)
+set.seed(11111)
+samples_to_plot = sample(1:ncol(mm_coad),4)
+
+plot_contribution(contributions[,samples_to_plot], mode = "absolute")
+```
+
+```{r}
+plot_contribution(contributions[,samples_to_plot], mode = "relative")
+```
+
+```{r}
+plot_contribution_heatmap(contributions, cluster_samples = F)
+```
+
+```{r}
+# Visualization of signature assignment results (strict)
+plot_contribution(contributions_strict[,samples_to_plot], mode = "absolute")
+```
+
+```{r}
+plot_contribution(contributions_strict[,samples_to_plot], mode = "relative")
+```
+
+```{r}
+plot_contribution_heatmap(contributions_strict, cluster_samples = F)
+```
+
+```{r}
+# Cosine similarity reconstruction vs. original mutational profile (fit_to_signatures)
+set.seed(11111)
+samples_to_plot = sample(1:ncol(mm_coad),4)
+
+plot_original_vs_reconstructed(mm_coad[,samples_to_plot],
+                               fit_res$reconstructed[,samples_to_plot], 
+                               y_intercept = 0.90)
+```
+
+```{r}
+# Cosine similarity reconstruction vs. original mutational profile (strict)
+plot_original_vs_reconstructed(mm_coad[,samples_to_plot],
+                               fit_res_strict$reconstructed[,samples_to_plot], 
+                               y_intercept = 0.90)
+```
+
+-   **Q.** Which is the etiology of the top absolute contributing signature for liver cancer? **Aristolochic acid exposure**
+
+-   **Q.** Which is the most prominent mutational context for the top contributing signature in skin cancer? **C\>T**
+
+-   **Q.** The etiology of the top contributing signature for lung cancer corresponds to an endogenous cellular mechanism. **FALSE**
+
+-   **Q.** SBS4 is one of the most common signatures found in lung cancer and is associated with tobacco smoking. **TRUE**
+
+-   **Q.** SBS7d is one of the most common signatures in skin cancer and is associated with UV light exposure and high numbers of C\>T mutations. **FALSE**
+
+# 7. Advanced mutational signature analysis using the SigProfilerAssignment python package \[OPTIONAL\]
+
+```{r}
+# Install R wrapper (SigProfilerAssignmentR)
+#if (!require("devtools")){
+#    install.packages("devtools")
+#}
+#devtools::install_github("AlexandrovLab/SigProfilerAssignmentR")
+#devtools::install_github('marcos-diazg/utils.mdg')
+```
+
+```{r}
+# Generate mutational assignment analysis using SigProfilerAssignment
+library(reticulate)
+```
+
+```{r}
+library(utils.mdg)
+mm_coad_sigprofiler = map_MP_to_SP(mm_coad) # Order of rows is different in
+                                            # SigProfiler vs. MutationalPatterns
+library(SigProfilerAssignmentR)
+```
+
+```{r}
+#cosmic_fit(mm_coad_sigprofiler, './results', export_probabilities = F)
+# Output results folder will be in the new "results" directory inside
+# your current working directory
+```
