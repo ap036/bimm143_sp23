@@ -1,7 +1,10 @@
 ---
 title: "Class 17: Vaccine Mini Project"
 author: "Aparajita Pranjal"
+<<<<<<< HEAD
 date: "2023-05-31"
+=======
+>>>>>>> 728ef8bac6d35b308e35a8879e2d79530ffccb44
 format: pdf
 editor: visual
 ---
