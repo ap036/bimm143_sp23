@@ -1,0 +1,150 @@
+---
+title: "Class 16: AWS Mini Project"
+author: "Aparajita Pranjal"
+date: "2023-05-26"
+format: pdf
+editor: visual
+---
+
+## Downstream Analysis
+
+Importing files:
+
+```{r}
+library(tximport)
+
+downloads_folder <- "~/Downloads"  # Path to the "Downloads" folder
+
+# Get the list of folders matching the pattern in the "Downloads" folder
+folders <- list.files(downloads_folder, pattern = "SRR21568*", full.names = TRUE)
+
+# Extract the sample names from the folder names
+samples <- sub("_quant", "", basename(folders))
+
+# Create file paths for the abundance.h5 files in each folder
+files <- file.path(folders, "abundance.h5")
+
+# Set the names of the files using the sample names
+names(files) <- samples
+
+txi.kallisto <- tximport(files, type = "kallisto", txOut = TRUE)
+```
+
+Summary of data:
+
+```{r}
+head(txi.kallisto$counts)
+```
+
+```{r}
+colSums(txi.kallisto$counts)
+```
+
+```{r}
+sum(rowSums(txi.kallisto$counts)>0)
+```
+
+Filtering the samples with no reads:
+
+```{r}
+to.keep <- rowSums(txi.kallisto$counts) > 0
+kset.nonzero <- txi.kallisto$counts[to.keep,]
+```
+
+```{r}
+keep2 <- apply(kset.nonzero,1,sd)>0
+x <- kset.nonzero[keep2,]
+```
+
+## PCA
+
+```{r}
+pca <- prcomp(t(x), scale=TRUE)
+
+summary(pca)
+```
+
+Plotting results:
+
+```{r}
+plot(pca$x[,1], pca$x[,2],
+     col=c("blue","blue","red","red"),
+     xlab="PC1", ylab="PC2", pch=16)
+```
+
+Using ggplot:
+
+```{r}
+library(ggplot2)
+library(ggrepel)
+
+# Make metadata object for the samples
+colData <- data.frame(condition = factor(rep(c("control", "treatment"), each = 2)))
+rownames(colData) <- colnames(txi.kallisto$counts)
+
+# Make the data.frame for ggplot 
+y <- as.data.frame(pca$x)
+y$Condition <- as.factor(colData$condition)
+
+ggplot(y) +
+  aes(PC1, PC2, col=Condition) +
+  geom_point() +
+  geom_text_repel(label=rownames(y)) +
+  theme_bw()
+```
+
+```{r}
+colData <- data.frame(condition = factor(rep(c("control", "treatment"), each = 2)))
+rownames(colData) <- colnames(txi.kallisto$counts)
+
+# Make the data.frame for ggplot 
+y <- as.data.frame(pca$x)
+y$Condition <- as.factor(colData$condition)
+
+ggplot(y) +
+  aes(PC1, PC3, col=Condition) +
+  geom_point() +
+  geom_text_repel(label=rownames(y)) +
+  theme_bw()
+```
+
+```{r}
+colData <- data.frame(condition = factor(rep(c("control", "treatment"), each = 2)))
+rownames(colData) <- colnames(txi.kallisto$counts)
+
+# Make the data.frame for ggplot 
+y <- as.data.frame(pca$x)
+y$Condition <- as.factor(colData$condition)
+
+ggplot(y) +
+  aes(PC2, PC3, col=Condition) +
+  geom_point() +
+  geom_text_repel(label=rownames(y)) +
+  theme_bw()
+```
+
+## **OPTIONAL: Differential-expression analysis**
+
+```{r}
+library(DESeq2)
+```
+
+```{r}
+sampleTable <- data.frame(condition = factor(rep(c("control", "treatment"), each = 2)))
+rownames(sampleTable) <- colnames(txi.kallisto$counts)
+```
+
+```{r}
+dds <- DESeqDataSetFromTximport(txi.kallisto,
+                                sampleTable, 
+                                ~condition)
+```
+
+```{r}
+# dds is now ready for DESeq() see our previous classes on this
+
+dds <- DESeq(dds)
+
+res <- results(dds)
+head(res)
+```
