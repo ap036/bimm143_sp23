@@ -1,0 +1,208 @@
+---
+title: "Class 7: Machine Learning"
+author: "Aparajita Pranjal"
+date: 2023-04-26
+format: pdf
+editor: visual
+chunk_output_type: inline
+---
+
+## Example of K-means clustering
+
+First step is to make up some data with a known structure, so we know what the answer should be.
+
+```{r}
+rnorm(10)
+plot(rnorm(100))
+```
+
+```{r}
+tmp <- c(rnorm(30, mean = -3), rnorm(30, mean = 3))
+x <- cbind(x = tmp, y = rev(tmp))
+plot(x)
+```
+
+Now we have some structured data in `x`. Let's see if k-means is able to identify the two groups.
+
+```{r}
+k <- kmeans(x, centers = 2, nstart = 20)
+k
+```
+
+Let's explore `k` :
+
+```{r}
+k$size
+k$centers
+k$cluster
+```
+
+```{r}
+plot(x, col = k$cluster)
+points(k$centers, col = 'blue', pch = 15)
+```
+
+Example with wrong number of clusters for k-means:
+
+```{r}
+k_3 <- kmeans(x, centers = 3, nstart = 20)
+plot(x, col = k_3$cluster)
+```
+
+# Example of Hierarchical Clustering
+
+Let's use the same data stored in `x` and the `'hclust()'` function:
+
+```{r}
+clustering <- hclust(dist(x))
+clustering
+plot(clustering)
+```
+
+Let's add a horizontal line
+
+```{r}
+plot(clustering)
+abline(h = 10, col = 'pink')
+```
+
+To get our results (i.e., membership vector) we need to "cut" our tree. The function for doing that is `'cutree()'`.
+
+```{r}
+subgroups <- cutree(clustering, h = 10)
+subgroups
+plot(x, col = subgroups)
+```
+
+You can also "cut" your tree with the number of clusters (k):
+
+```{r}
+cutree(clustering, k = 2)
+```
+
+# Principal Component Analysis
+
+The aim is to reduce dimensionality (or surfaces) while only losing a small amount of information. The first axis shows the higher variability and the second axis will show less and so on.
+
+## PCA of UK Food
+
+Data import
+
+```{r}
+url <- "https://tinyurl.com/UK-foods"
+x <- read.csv(url, row.names = 1)
+# header = F will remove name of columns
+head(x)
+```
+
+**Q1**. How many rows and columns are in your new data frame named `x`? What R functions could you use to answer this questions? **17 rows and 4 columns**
+
+**Q2.** Which approach to solving the 'row-names problem' mentioned above do you prefer and why? Is one approach more robust than another under certain circumstances? **The function `row.names` is more robust than negative indexing as that will remove the first column every time it is run so more data will be removed. Whereas `row.names` only removes the column we choose.**
+
+```{r}
+dim(x)
+```
+
+Now we can generate some basic visualizations:
+
+```{r}
+barplot(as.matrix(x), col = rainbow(nrow(x)))
+barplot(as.matrix(x), col = rainbow(nrow(x)), beside = T)
+```
+
+**Q3**: Changing what optional argument in the above **barplot()** function results in the following plot? **Changing `beside = F` will create the stacked bar plot.**
+
+Pairwise plots for better comparison
+
+```{r}
+pairs(x, col = rainbow(nrow(x)), pch = 16)
+```
+
+**Q5**: Generating all pairwise plots may help somewhat. Can you make sense of the following code and resulting figure? What does it mean if a given point lies on the diagonal for a given plot? **Pairwise plots compare the different food types just within two countries hence it is easy to see the correlation between just 2 variables but not the entire dataset. If the point lies on the diagonal it shows how strongly correlated the density plots are.**
+
+**Q6**. What is the main differences between N. Ireland and the other countries of the UK in terms of this data-set? **N. Ireland has a more diverse distribution of food types when compared to the other countries as it does not have a clear diagonal. Instead there are more outliers and a wide spread of data points indicating weak correlation and therefore different ratio of food types consumed.**
+
+Let's apply PCA, for that we need to use the command `'prcomp()'`. This function expects the transpose of our data using `'t()'`.
+
+```{r}
+pca <- prcomp(t(x))
+summary(pca)
+```
+
+Let's plot the PCA results
+
+```{r}
+plot(pca)
+```
+
+We need to access the results of the PCA analysis
+
+```{r}
+attributes(pca)
+```
+
+We can explore the pca\$x dataframe:
+
+```{r}
+pca$x
+pca$x[,1]
+```
+
+Plotting:
+
+```{r}
+plot(x = pca$x[,1], y = pca$x[,2])
+```
+
+Plotting continued:
+
+**Q7**. Complete the code below to generate a plot of PC1 vs PC2. The second line adds text labels over the data points.
+
+**Q8.** Customize your plot so that the colors of the country names match the colors in our UK and Ireland map and table at start of this document.
+
+```{r}
+plot(x = pca$x[,1], y = pca$x[,2], xlab="PC1", ylab="PC2", xlim=c(-270,500))
+colors_countries <- c('orange', 'pink', 'blue', 'green')
+text(x = pca$x[,1], y = pca$x[,2], colnames(x), col = colors_countries)
+# rownames(pca$x) is equivalent
+```
+
+**Q9**: Generate a similar 'loadings plot' for PC2. What two food groups feature prominantly and what does PC2 mainly tell us about? **PCA2 mainly tells us potatoes still have a very high positive loading score still and soft drinks has switched to a negative score.**
+
+```{r}
+par(mar=c(10, 3, 0.35, 0))
+barplot( pca$rotation[,2], las=2 )
+```
+
+## PCA of RNA Seq Data
+
+First we import the data
+
+```{r}
+url2 <- "https://tinyurl.com/expression-CSV"
+rna.data <- read.csv(url2, row.names=1)
+head(rna.data)
+```
+
+**Q10**: How many genes and samples are in this data set? **100 genes and 10 samples**
+
+```{r}
+dim(rna.data)
+```
+
+Applying PCA:
+
+```{r}
+pca_rna <- prcomp(t(rna.data))
+summary(pca_rna)
+cols_samples <- c(rep('blue', 5), rep('red', 5))
+plot(pca_rna$x[,1], pca_rna$x[,2], 
+     xlab = 'PCA1', ylab = 'PCA2',
+     col = cols_samples)
+```
+
+Rotation shows expression levels
+
+```{r}
+barplot(pca_rna$rotation[,1])
+```
