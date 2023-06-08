@@ -1,0 +1,112 @@
+---
+title: "Class 9: Structural Bioinformatics"
+author: "Aparajita Pranjal"
+date: 2023-05-03
+format: pdf
+editor: visual
+---
+
+## PDB Statistics
+
+Importing and reading in csv file:
+
+```{r}
+pdb_stats <- read.csv("data_export_summary.csv", row.names = 1)
+head(pdb_stats)
+```
+
+-   **Q1:** What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy. **92.99%**
+
+```{r}
+xray_total <- sum(as.numeric(gsub(",", "", pdb_stats$X.ray)))
+em_total <- sum(as.numeric(gsub(",", "", pdb_stats$EM)))
+n_total <- sum(as.numeric(gsub(",", "", pdb_stats$Total)))
+xray_em_percent <- ((xray_total + em_total)/n_total)*100
+xray_em_percent
+```
+
+-   **Q2:** What proportion of structures in the PDB are protein? **86.81%**
+
+```{r}
+protein_total <- as.numeric(gsub(",", "", pdb_stats[1,7]))
+protein_percentage <- (protein_total/n_total)*100
+protein_percentage
+```
+
+-   **Q3:** Type HIV in the PDB website search box on the home page and determine how many HIV-1 protease structures are in the current PDB? **204,352 structures**
+
+## Mol\* Exploration
+
+**Q4**: Water molecules normally have 3 atoms. Why do we see just one atom per water molecule in this structure? **The hydrogen atoms are not resolved in X-ray crystallography hence only the oxygen molecule is used to represent water.**
+
+**Q5**: There is a critical "conserved" water molecule in the binding site. Can you identify this water molecule? What residue number does this water molecule have? **HOH 308**
+
+Visualizing the HIV-1 protease structure:
+
+![](1HSG.png)
+
+**Q6**: Generate and save a figure clearly showing the two distinct chains of HIV-protease along with the ligand. You might also consider showing the catalytic residues ASP 25 in each chain and the critical water (we recommend *"Ball & Stick"* for these side-chains). Add this figure to your Quarto document.
+
+![](1HSG-2.png)
+
+# Intro to Bio3D in R
+
+```{r}
+library(bio3d)
+pdb <- read.pdb("1hsg")
+pdb
+
+attributes(pdb)
+head(pdb$atom)
+```
+
+-   **Q7:** How many amino acid residues are there in this pdb object? **198 residues**
+
+-   **Q8:** Name one of the two non-protein residues? **HOH**
+
+-   **Q9:** How many protein chains are in this structure? **2 protein chains**
+
+## Predicting functional motions of a single structure by normal mode analysis
+
+New protein: Adenylate Kinase
+
+```{r}
+adk <- read.pdb("6s36")
+adk
+
+m <- nma(adk)
+plot(m)
+```
+
+Creating movie of protein structure to view in Mol\*:
+
+```{r}
+mktrj(m, file="adk_m7.pdb")
+```
+
+# Comparative structure analysis of Adenylate Kinase
+
+```{r}
+# Install packages in the R console NOT your Rmd/Quarto file
+
+#install.packages("bio3d")
+#install.packages("devtools")
+#install.packages("BiocManager")
+
+#BiocManager::install("msa")
+#devtools::install_bitbucket("Grantlab/bio3d-view")
+```
+
+-   **Q10.** Which of the packages above is found only on BioConductor and not CRAN? **msa**
+
+-   **Q11.** Which of the above packages is not found on BioConductor or CRAN? **None of them**
+
+-   **Q12.** True or False? Functions from the devtools package can be used to install packages from GitHub and BitBucket? **True**
+
+```{r}
+library(bio3d)
+aa <- get.seq("1ake_A")
+aa
+```
+
+**Q13.** How many amino acids are in this sequence, i.e. how long is this sequence? **214 amino acids**
