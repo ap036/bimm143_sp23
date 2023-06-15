@@ -2,7 +2,7 @@
 title: "Class 7: Machine Learning"
 author: "Aparajita Pranjal"
 date: 2023-04-26
-format: pdf
+format: html
 editor: visual
 chunk_output_type: inline
 ---
